@@ -13,7 +13,6 @@ type Message struct {
 	Text string `json:"text"`
 }
 
-// Struct untuk Request ke Google
 type GeminiRequest struct {
 	Contents []struct {
 		Parts []struct {
@@ -22,7 +21,6 @@ type GeminiRequest struct {
 	} `json:"contents"`
 }
 
-// Struct untuk Response dari Google
 type GeminiResponse struct {
 	Candidates []struct {
 		Content struct {
@@ -35,32 +33,27 @@ type GeminiResponse struct {
 
 func chatHandler(w http.ResponseWriter, r *http.Request) {
 	var userMsg Message
-	if err := json.NewDecoder(r.Body).Decode(&userMsg); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	json.NewDecoder(r.Body).Decode(&userMsg)
 
 	apiKey := os.Getenv("GEMINI_API_KEY")
 	apiUrl := "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey
 
-	// Menyusun data untuk dikirim ke Gemini
-	geminiReq := GeminiRequest{}
-	geminiReq.Contents = []struct {
+	// Susun Request
+	reqBody := GeminiRequest{}
+	reqBody.Contents = append(reqBody.Contents, struct {
 		Parts []struct {
 			Text string `json:"text"`
 		} `json:"parts"`
 	}{
-		{
-			Parts: []struct {
-				Text string `json:"text"`
-			}{{Text: userMsg.Text}},
-		},
-	}
+		Parts: []struct {
+			Text string `json:"text"`
+		}{{Text: userMsg.Text}},
+	})
 
-	jsonData, _ := json.Marshal(geminiReq)
-	resp, err := http.Post(apiUrl, "application/json", bytes.NewBuffer(jsonData))
+	jsonReq, _ := json.Marshal(reqBody)
+	resp, err := http.Post(apiUrl, "application/json", bytes.NewBuffer(jsonReq))
 	if err != nil {
-		http.Error(w, "Koneksi ke Gemini gagal", 500)
+		http.Error(w, "Error API", 500)
 		return
 	}
 	defer resp.Body.Close()
@@ -69,10 +62,12 @@ func chatHandler(w http.ResponseWriter, r *http.Request) {
 	var geminiResp GeminiResponse
 	json.Unmarshal(body, &geminiResp)
 
-	// Mengambil balasan teks dari AI
-	botReply := "Maaf, server AI sedang sibuk."
-	if len(geminiResp.Candidates) > 0 && len(geminiResp.Candidates.Content.Parts) > 0 {
-		botReply = geminiResp.Candidates.Content.Parts.Text
+	// LOGIKA PENGAMBILAN TEKS YANG BENAR
+	botReply := "Maaf, saya tidak mengerti."
+	if len(geminiResp.Candidates) > 0 {
+		if len(geminiResp.Candidates.Content.Parts) > 0 {
+			botReply = geminiResp.Candidates.Content.Parts.Text
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -86,6 +81,6 @@ func main() {
 	port := os.Getenv("PORT")
 	if port == "" { port = "8080" }
 
-	fmt.Printf("Chatbot aktif di port %s...\n", port)
+	fmt.Printf("Server running on port %s\n", port)
 	http.ListenAndServe(":"+port, nil)
 }
