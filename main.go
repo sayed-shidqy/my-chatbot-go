@@ -40,7 +40,6 @@ func chatHandler(w http.ResponseWriter, r *http.Request) {
 	apiKey := os.Getenv("GEMINI_API_KEY")
 	apiUrl := "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey
 
-	// Membangun request JSON untuk Gemini
 	reqBody := GeminiRequest{
 		Contents: []struct {
 			Parts []struct {
@@ -66,7 +65,8 @@ func chatHandler(w http.ResponseWriter, r *http.Request) {
 	var geminiResp GeminiResponse
 	json.Unmarshal(body, &geminiResp)
 
-	botReply := "Maaf, AI sedang tidak merespon."
+	// Perbaikan logika pengambilan balasan:
+	botReply := "Maaf, AI tidak memberikan respon."
 	if len(geminiResp.Candidates) > 0 && len(geminiResp.Candidates.Content.Parts) > 0 {
 		botReply = geminiResp.Candidates.Content.Parts.Text
 	}
