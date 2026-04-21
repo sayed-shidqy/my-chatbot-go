@@ -39,8 +39,8 @@ func chatHandler(w http.ResponseWriter, r *http.Request) {
 	apiUrl := "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey
 
 	// Susun Request
-	reqBody := GeminiRequest{}
-	reqBody.Contents = append(reqBody.Contents, struct {
+	geminiReq := GeminiRequest{}
+	geminiReq.Contents = []struct {
 		Parts []struct {
 			Text string `json:"text"`
 		} `json:"parts"`
