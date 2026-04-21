@@ -33,27 +33,31 @@ type GeminiResponse struct {
 
 func chatHandler(w http.ResponseWriter, r *http.Request) {
 	var userMsg Message
-	json.NewDecoder(r.Body).Decode(&userMsg)
+	if err := json.NewDecoder(r.Body).Decode(&userMsg); err != nil {
+		return
+	}
 
 	apiKey := os.Getenv("GEMINI_API_KEY")
 	apiUrl := "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey
 
-	// Susun Request
-	geminiReq := GeminiRequest{}
-	geminiReq.Contents = []struct {
-		Parts []struct {
-			Text string `json:"text"`
-		} `json:"parts"`
-	}{
-		Parts: []struct {
-			Text string `json:"text"`
-		}{{Text: userMsg.Text}},
-	})
+	// Membangun request JSON untuk Gemini
+	reqBody := GeminiRequest{
+		Contents: []struct {
+			Parts []struct {
+				Text string `json:"text"`
+			} `json:"parts"`
+		}{
+			{
+				Parts: []struct {
+					Text string `json:"text"`
+				}{{Text: userMsg.Text}},
+			},
+		},
+	}
 
-	jsonReq, _ := json.Marshal(reqBody)
-	resp, err := http.Post(apiUrl, "application/json", bytes.NewBuffer(jsonReq))
+	jsonData, _ := json.Marshal(reqBody)
+	resp, err := http.Post(apiUrl, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
-		http.Error(w, "Error API", 500)
 		return
 	}
 	defer resp.Body.Close()
@@ -62,12 +66,9 @@ func chatHandler(w http.ResponseWriter, r *http.Request) {
 	var geminiResp GeminiResponse
 	json.Unmarshal(body, &geminiResp)
 
-	// LOGIKA PENGAMBILAN TEKS YANG BENAR
-	botReply := "Maaf, saya tidak mengerti."
-	if len(geminiResp.Candidates) > 0 {
-		if len(geminiResp.Candidates.Content.Parts) > 0 {
-			botReply = geminiResp.Candidates.Content.Parts.Text
-		}
+	botReply := "Maaf, AI sedang tidak merespon."
+	if len(geminiResp.Candidates) > 0 && len(geminiResp.Candidates.Content.Parts) > 0 {
+		botReply = geminiResp.Candidates.Content.Parts.Text
 	}
 
 	w.Header().Set("Content-Type", "application/json")
